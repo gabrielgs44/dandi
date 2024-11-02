@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { EyeIcon, ClipboardIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { Dialog } from '@headlessui/react'
 
 interface ApiKey {
   id: string
@@ -9,6 +10,182 @@ interface ApiKey {
   key: string
   createdAt: string
   usage: number
+  limit?: number
+}
+
+const CreateKeyModal = ({
+  isCreating,
+  setIsCreating,
+  newKeyName,
+  setNewKeyName,
+  newKeyLimit,
+  setNewKeyLimit,
+  createApiKey
+}: {
+  isCreating: boolean
+  setIsCreating: (value: boolean) => void
+  newKeyName: string
+  setNewKeyName: (value: string) => void
+  newKeyLimit: number
+  setNewKeyLimit: (value: number) => void
+  createApiKey: () => void
+}) => (
+  <Dialog open={isCreating} onClose={() => setIsCreating(false)} className="relative z-50">
+    <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+    
+    <div className="fixed inset-0 flex items-center justify-center p-4">
+      <Dialog.Panel className="bg-white rounded-lg p-6 w-full max-w-md">
+        <Dialog.Title className="text-xl font-semibold mb-4">Create a new API key</Dialog.Title>
+        <p className="text-sm text-gray-600 mb-6">Enter a name and limit for the new API key.</p>
+
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Key Name
+            </label>
+            <div className="text-xs text-gray-500 mb-2">— A unique name to identify this key</div>
+            <input
+              type="text"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              placeholder="Key Name"
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300"
+                checked={true}
+                readOnly
+              />
+              <span className="text-sm font-medium text-gray-700">Limit monthly usage*</span>
+            </label>
+            <input
+              type="number"
+              value={newKeyLimit}
+              onChange={(e) => setNewKeyLimit(Number(e.target.value))}
+              className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2"
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              *If the combined usage of all your keys exceeds your plan's limit, all requests will be rejected.
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setIsCreating(false)}
+              className="px-4 py-2 text-gray-700 hover:text-gray-900"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={createApiKey}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Create
+            </button>
+          </div>
+        </div>
+      </Dialog.Panel>
+    </div>
+  </Dialog>
+)
+
+const EditKeyModal = ({
+  isEditing,
+  setIsEditing,
+  editingKeyData,
+  updateApiKey
+}: {
+  isEditing: boolean
+  setIsEditing: (value: boolean) => void
+  editingKeyData: ApiKey | null
+  updateApiKey: (id: string, newName: string, newLimit: number) => void
+}) => {
+  const [editName, setEditName] = useState(editingKeyData?.name || '')
+  const [editLimit, setEditLimit] = useState(editingKeyData?.limit || 1000)
+
+  useEffect(() => {
+    if (editingKeyData) {
+      setEditName(editingKeyData.name)
+      setEditLimit(editingKeyData.limit || 1000)
+    }
+  }, [editingKeyData])
+
+  const handleUpdate = () => {
+    if (editingKeyData && editName) {
+      updateApiKey(editingKeyData.id, editName, editLimit)
+      setIsEditing(false)
+    }
+  }
+
+  return (
+    <Dialog open={isEditing} onClose={() => setIsEditing(false)} className="relative z-50">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="bg-white rounded-lg p-6 w-full max-w-md">
+          <Dialog.Title className="text-xl font-semibold mb-4">Edit API key</Dialog.Title>
+          <p className="text-sm text-gray-600 mb-6">Update the name and limit for this API key.</p>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Key Name
+              </label>
+              <div className="text-xs text-gray-500 mb-2">— A unique name to identify this key</div>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                placeholder="Key Name"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300"
+                  checked={true}
+                  readOnly
+                />
+                <span className="text-sm font-medium text-gray-700">Limit monthly usage*</span>
+              </label>
+              <input
+                type="number"
+                value={editLimit}
+                onChange={(e) => setEditLimit(Number(e.target.value))}
+                className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                *If the combined usage of all your keys exceeds your plan's limit, all requests will be rejected.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdate}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        </Dialog.Panel>
+      </div>
+    </Dialog>
+  )
 }
 
 export default function DashboardPage() {
@@ -23,7 +200,7 @@ export default function DashboardPage() {
     {
       id: '2',
       name: 'tetette',
-      key: 'tvly-2p9m4k5l8x7n3j1h6g4f9d8s7a5',
+      key: 'tvly-2p9m4k5l8x7n3j1h6g4f9d8s7a6',
       createdAt: '2024-03-16T15:30:00.000Z',
       usage: 0
     }
@@ -32,6 +209,10 @@ export default function DashboardPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
   const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [newKeyLimit, setNewKeyLimit] = useState<number>(1000)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingKeyData, setEditingKeyData] = useState<ApiKey | null>(null)
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
 
   const createApiKey = () => {
     if (!newKeyName) return
@@ -41,19 +222,26 @@ export default function DashboardPage() {
       name: newKeyName,
       key: `tvly-${Math.random().toString(36).slice(2)}`,
       createdAt: new Date().toISOString(),
-      usage: 0
+      usage: 0,
+      limit: newKeyLimit
     }
     
     setApiKeys([...apiKeys, newKey])
     setNewKeyName('')
+    setNewKeyLimit(1000)
     setIsCreating(false)
   }
 
-  const updateApiKey = (id: string, newName: string) => {
+  const updateApiKey = (id: string, newName: string, newLimit: number) => {
     setApiKeys(apiKeys.map(key => 
-      key.id === id ? { ...key, name: newName } : key
+      key.id === id ? { ...key, name: newName, limit: newLimit } : key
     ))
-    setEditingKey(null)
+    setEditingKeyData(null)
+  }
+
+  const handleEditClick = (key: ApiKey) => {
+    setEditingKeyData(key)
+    setIsEditing(true)
   }
 
   const deleteApiKey = (id: string) => {
@@ -65,6 +253,13 @@ export default function DashboardPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     // You might want to add a toast notification here
+  }
+
+  const toggleKeyVisibility = (keyId: string) => {
+    setVisibleKeys(prev => ({
+      ...prev,
+      [keyId]: !prev[keyId]
+    }))
   }
 
   return (
@@ -125,33 +320,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {isCreating && (
-            <div className="mb-4 p-4 border rounded-lg">
-              <input
-                type="text"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Enter API key name"
-                className="border rounded px-3 py-2 mr-2"
-              />
-              <button
-                onClick={createApiKey}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Create
-              </button>
-              <button
-                onClick={() => {
-                  setIsCreating(false)
-                  setNewKeyName('')
-                }}
-                className="ml-2 text-gray-500 hover:text-gray-700"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-
           <div className="text-sm text-gray-600 mb-6">
             The key is used to authenticate your requests to the <a href="#" className="text-blue-600 hover:text-blue-700">Research API</a>. 
             To learn more, see the <a href="#" className="text-blue-600 hover:text-blue-700">documentation</a> page.
@@ -182,7 +350,7 @@ export default function DashboardPage() {
                       <input
                         type="text"
                         defaultValue={key.name}
-                        onBlur={(e) => updateApiKey(key.id, e.target.value)}
+                        onBlur={(e) => updateApiKey(key.id, e.target.value, key.limit || 1000)}
                         className="border rounded-lg px-3 py-1.5"
                         autoFocus
                       />
@@ -193,14 +361,15 @@ export default function DashboardPage() {
                   <td className="py-4 px-4 text-gray-900">{key.usage}</td>
                   <td className="py-4 px-4">
                     <span className="font-mono text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5 inline-block">
-                      tvly-************************
+                      {visibleKeys[key.id] ? key.key : `${key.key.slice(0, 5)}************************`}
                     </span>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex gap-4">
                       <button 
-                        onClick={() => alert(key.key)}
+                        onClick={() => toggleKeyVisibility(key.id)}
                         className="text-gray-400 hover:text-gray-600"
+                        title={visibleKeys[key.id] ? "Hide API Key" : "Show API Key"}
                       >
                         <EyeIcon className="w-5 h-5" />
                       </button>
@@ -211,7 +380,7 @@ export default function DashboardPage() {
                         <ClipboardIcon className="w-5 h-5" />
                       </button>
                       <button 
-                        onClick={() => setEditingKey(key.id)}
+                        onClick={() => handleEditClick(key)}
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <PencilIcon className="w-5 h-5" />
@@ -240,6 +409,21 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+      <CreateKeyModal
+        isCreating={isCreating}
+        setIsCreating={setIsCreating}
+        newKeyName={newKeyName}
+        setNewKeyName={setNewKeyName}
+        newKeyLimit={newKeyLimit}
+        setNewKeyLimit={setNewKeyLimit}
+        createApiKey={createApiKey}
+      />
+      <EditKeyModal
+        isEditing={isEditing}
+        setIsEditing={setIsEditing}
+        editingKeyData={editingKeyData}
+        updateApiKey={updateApiKey}
+      />
     </div>
   )
 }
