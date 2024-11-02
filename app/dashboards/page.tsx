@@ -3,14 +3,15 @@
 import { useState, useEffect } from 'react'
 import { EyeIcon, ClipboardIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { Dialog } from '@headlessui/react'
+import { supabase } from '@/lib/supabase'
 
 interface ApiKey {
   id: string
+  created_at: string
   name: string
-  key: string
-  createdAt: string
+  value: string
   usage: number
-  limit?: number
+  monthly_limit: number
 }
 
 const CreateKeyModal = ({
@@ -106,12 +107,12 @@ const EditKeyModal = ({
   updateApiKey: (id: string, newName: string, newLimit: number) => void
 }) => {
   const [editName, setEditName] = useState(editingKeyData?.name || '')
-  const [editLimit, setEditLimit] = useState(editingKeyData?.limit || 1000)
+  const [editLimit, setEditLimit] = useState(editingKeyData?.monthly_limit || 1000)
 
   useEffect(() => {
     if (editingKeyData) {
       setEditName(editingKeyData.name)
-      setEditLimit(editingKeyData.limit || 1000)
+      setEditLimit(editingKeyData.monthly_limit || 1000)
     }
   }, [editingKeyData])
 
@@ -189,22 +190,7 @@ const EditKeyModal = ({
 }
 
 export default function DashboardPage() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([
-    {
-      id: '1',
-      name: 'default',
-      key: 'tvly-8x7n9v2m4k5l3j1h6g4f9d8s7a5',
-      createdAt: '2024-03-15T10:00:00.000Z',
-      usage: 0
-    },
-    {
-      id: '2',
-      name: 'tetette',
-      key: 'tvly-2p9m4k5l8x7n3j1h6g4f9d8s7a6',
-      createdAt: '2024-03-16T15:30:00.000Z',
-      usage: 0
-    }
-  ])
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
 
   const [isCreating, setIsCreating] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
@@ -214,27 +200,67 @@ export default function DashboardPage() {
   const [editingKeyData, setEditingKeyData] = useState<ApiKey | null>(null)
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
 
-  const createApiKey = () => {
+  useEffect(() => {
+    fetchApiKeys()
+  }, [])
+
+  const fetchApiKeys = async () => {
+    const { data, error } = await supabase
+      .from('api_keys')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching API keys:', error)
+      return
+    }
+
+    setApiKeys(data)
+  }
+
+  const createApiKey = async () => {
     if (!newKeyName) return
     
     const newKey = {
-      id: Math.random().toString(),
       name: newKeyName,
-      key: `tvly-${Math.random().toString(36).slice(2)}`,
-      createdAt: new Date().toISOString(),
+      value: `tvly-${Math.random().toString(36).slice(2)}`,
       usage: 0,
-      limit: newKeyLimit
+      monthly_limit: newKeyLimit
     }
     
-    setApiKeys([...apiKeys, newKey])
+    const { data, error } = await supabase
+      .from('api_keys')
+      .insert([newKey])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating API key:', error)
+      return
+    }
+
+    setApiKeys([data, ...apiKeys])
     setNewKeyName('')
     setNewKeyLimit(1000)
     setIsCreating(false)
   }
 
-  const updateApiKey = (id: string, newName: string, newLimit: number) => {
+  const updateApiKey = async (id: string, newName: string, newLimit: number) => {
+    const { error } = await supabase
+      .from('api_keys')
+      .update({ 
+        name: newName, 
+        monthly_limit: newLimit 
+      })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error updating API key:', error)
+      return
+    }
+
     setApiKeys(apiKeys.map(key => 
-      key.id === id ? { ...key, name: newName, limit: newLimit } : key
+      key.id === id ? { ...key, name: newName, monthly_limit: newLimit } : key
     ))
     setEditingKeyData(null)
   }
@@ -244,10 +270,20 @@ export default function DashboardPage() {
     setIsEditing(true)
   }
 
-  const deleteApiKey = (id: string) => {
-    if (confirm('Are you sure you want to delete this API key?')) {
-      setApiKeys(apiKeys.filter(key => key.id !== id))
+  const deleteApiKey = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this API key?')) return
+
+    const { error } = await supabase
+      .from('api_keys')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting API key:', error)
+      return
     }
+
+    setApiKeys(apiKeys.filter(key => key.id !== id))
   }
 
   const copyToClipboard = (text: string) => {
@@ -350,7 +386,7 @@ export default function DashboardPage() {
                       <input
                         type="text"
                         defaultValue={key.name}
-                        onBlur={(e) => updateApiKey(key.id, e.target.value, key.limit || 1000)}
+                        onBlur={(e) => updateApiKey(key.id, e.target.value, key.monthly_limit || 1000)}
                         className="border rounded-lg px-3 py-1.5"
                         autoFocus
                       />
@@ -361,7 +397,7 @@ export default function DashboardPage() {
                   <td className="py-4 px-4 text-gray-900">{key.usage}</td>
                   <td className="py-4 px-4">
                     <span className="font-mono text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5 inline-block">
-                      {visibleKeys[key.id] ? key.key : `${key.key.slice(0, 5)}************************`}
+                      {visibleKeys[key.id] ? key.value : `${key.value.slice(0, 5)}************************`}
                     </span>
                   </td>
                   <td className="py-4 px-4">
@@ -374,7 +410,7 @@ export default function DashboardPage() {
                         <EyeIcon className="w-5 h-5" />
                       </button>
                       <button 
-                        onClick={() => copyToClipboard(key.key)}
+                        onClick={() => copyToClipboard(key.value)}
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <ClipboardIcon className="w-5 h-5" />
