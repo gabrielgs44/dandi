@@ -199,6 +199,8 @@ export default function DashboardPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editingKeyData, setEditingKeyData] = useState<ApiKey | null>(null)
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
+  const [showToast, setShowToast] = useState(false)
 
   useEffect(() => {
     fetchApiKeys()
@@ -286,9 +288,14 @@ export default function DashboardPage() {
     setApiKeys(apiKeys.filter(key => key.id !== id))
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    // You might want to add a toast notification here
+  const copyToClipboard = async (text: string, keyId: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 3000) // Hide after 3 seconds
+    } catch (err) {
+      console.error('Failed to copy text: ', err)
+    }
   }
 
   const toggleKeyVisibility = (keyId: string) => {
@@ -410,10 +417,16 @@ export default function DashboardPage() {
                         <EyeIcon className="w-5 h-5" />
                       </button>
                       <button 
-                        onClick={() => copyToClipboard(key.value)}
-                        className="text-gray-400 hover:text-gray-600"
+                        onClick={() => copyToClipboard(key.value, key.id)}
+                        className="text-gray-400 hover:text-gray-600 relative group"
+                        title="Copy API Key"
                       >
                         <ClipboardIcon className="w-5 h-5" />
+                        {copiedKeyId === key.id && (
+                          <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded whitespace-nowrap">
+                            Copied!
+                          </span>
+                        )}
                       </button>
                       <button 
                         onClick={() => handleEditClick(key)}
@@ -460,6 +473,20 @@ export default function DashboardPage() {
         editingKeyData={editingKeyData}
         updateApiKey={updateApiKey}
       />
+      {showToast && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded shadow-lg animate-fade-in">
+          <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+            <path d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>Copied API Key to clipboard</span>
+          <button 
+            onClick={() => setShowToast(false)}
+            className="ml-2 text-white/80 hover:text-white"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }
