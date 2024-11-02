@@ -201,6 +201,8 @@ export default function DashboardPage() {
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
   const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
   useEffect(() => {
     fetchApiKeys()
@@ -245,6 +247,7 @@ export default function DashboardPage() {
     setNewKeyName('')
     setNewKeyLimit(1000)
     setIsCreating(false)
+    displayToast('API Key created successfully', 'success')
   }
 
   const updateApiKey = async (id: string, newName: string, newLimit: number) => {
@@ -265,6 +268,7 @@ export default function DashboardPage() {
       key.id === id ? { ...key, name: newName, monthly_limit: newLimit } : key
     ))
     setEditingKeyData(null)
+    displayToast('API Key updated successfully', 'success')
   }
 
   const handleEditClick = (key: ApiKey) => {
@@ -286,13 +290,13 @@ export default function DashboardPage() {
     }
 
     setApiKeys(apiKeys.filter(key => key.id !== id))
+    displayToast('API Key deleted successfully', 'error')
   }
 
   const copyToClipboard = async (text: string, keyId: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      setShowToast(true)
-      setTimeout(() => setShowToast(false), 3000) // Hide after 3 seconds
+      displayToast('Copied API Key to clipboard', 'success')
     } catch (err) {
       console.error('Failed to copy text: ', err)
     }
@@ -303,6 +307,13 @@ export default function DashboardPage() {
       ...prev,
       [keyId]: !prev[keyId]
     }))
+  }
+
+  const displayToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage(message)
+    setToastType(type)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
   }
 
   return (
@@ -474,11 +485,19 @@ export default function DashboardPage() {
         updateApiKey={updateApiKey}
       />
       {showToast && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded shadow-lg animate-fade-in">
-          <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-            <path d="M5 13l4 4L19 7"></path>
-          </svg>
-          <span>Copied API Key to clipboard</span>
+        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded shadow-lg animate-fade-in ${
+          toastType === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+        } text-white`}>
+          {toastType === 'success' ? (
+            <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+              <path d="M5 13l4 4L19 7"></path>
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+              <path d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          )}
+          <span>{toastMessage}</span>
           <button 
             onClick={() => setShowToast(false)}
             className="ml-2 text-white/80 hover:text-white"
