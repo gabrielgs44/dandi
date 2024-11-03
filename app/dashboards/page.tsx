@@ -1,302 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { EyeIcon, ClipboardIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { Dialog } from '@headlessui/react'
-import { supabase } from '@/lib/supabase'
-
-interface ApiKey {
-  id: string
-  created_at: string
-  name: string
-  value: string
-  usage: number
-  monthly_limit: number
-}
-
-const CreateKeyModal = ({
-  isCreating,
-  setIsCreating,
-  newKeyName,
-  setNewKeyName,
-  newKeyLimit,
-  setNewKeyLimit,
-  createApiKey
-}: {
-  isCreating: boolean
-  setIsCreating: (value: boolean) => void
-  newKeyName: string
-  setNewKeyName: (value: string) => void
-  newKeyLimit: number
-  setNewKeyLimit: (value: number) => void
-  createApiKey: () => void
-}) => (
-  <Dialog open={isCreating} onClose={() => setIsCreating(false)} className="relative z-50">
-    <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-    
-    <div className="fixed inset-0 flex items-center justify-center p-4">
-      <Dialog.Panel className="bg-white rounded-lg p-6 w-full max-w-md">
-        <Dialog.Title className="text-xl font-semibold mb-4">Create a new API key</Dialog.Title>
-        <p className="text-sm text-gray-600 mb-6">Enter a name and limit for the new API key.</p>
-
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Key Name
-            </label>
-            <div className="text-xs text-gray-500 mb-2">— A unique name to identify this key</div>
-            <input
-              type="text"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              placeholder="Key Name"
-            />
-          </div>
-
-          <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300"
-                checked={true}
-                readOnly
-              />
-              <span className="text-sm font-medium text-gray-700">Limit monthly usage*</span>
-            </label>
-            <input
-              type="number"
-              value={newKeyLimit}
-              onChange={(e) => setNewKeyLimit(Number(e.target.value))}
-              className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              *If the combined usage of all your keys exceeds your plan's limit, all requests will be rejected.
-            </p>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={() => setIsCreating(false)}
-              className="px-4 py-2 text-gray-700 hover:text-gray-900"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={createApiKey}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Create
-            </button>
-          </div>
-        </div>
-      </Dialog.Panel>
-    </div>
-  </Dialog>
-)
-
-const EditKeyModal = ({
-  isEditing,
-  setIsEditing,
-  editingKeyData,
-  updateApiKey
-}: {
-  isEditing: boolean
-  setIsEditing: (value: boolean) => void
-  editingKeyData: ApiKey | null
-  updateApiKey: (id: string, newName: string, newLimit: number) => void
-}) => {
-  const [editName, setEditName] = useState(editingKeyData?.name || '')
-  const [editLimit, setEditLimit] = useState(editingKeyData?.monthly_limit || 1000)
-
-  useEffect(() => {
-    if (editingKeyData) {
-      setEditName(editingKeyData.name)
-      setEditLimit(editingKeyData.monthly_limit || 1000)
-    }
-  }, [editingKeyData])
-
-  const handleUpdate = () => {
-    if (editingKeyData && editName) {
-      updateApiKey(editingKeyData.id, editName, editLimit)
-      setIsEditing(false)
-    }
-  }
-
-  return (
-    <Dialog open={isEditing} onClose={() => setIsEditing(false)} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-      
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="bg-white rounded-lg p-6 w-full max-w-md">
-          <Dialog.Title className="text-xl font-semibold mb-4">Edit API key</Dialog.Title>
-          <p className="text-sm text-gray-600 mb-6">Update the name and limit for this API key.</p>
-
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Key Name
-              </label>
-              <div className="text-xs text-gray-500 mb-2">— A unique name to identify this key</div>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                placeholder="Key Name"
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="rounded border-gray-300"
-                  checked={true}
-                  readOnly
-                />
-                <span className="text-sm font-medium text-gray-700">Limit monthly usage*</span>
-              </label>
-              <input
-                type="number"
-                value={editLimit}
-                onChange={(e) => setEditLimit(Number(e.target.value))}
-                className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2"
-              />
-              <p className="mt-2 text-xs text-gray-500">
-                *If the combined usage of all your keys exceeds your plan's limit, all requests will be rejected.
-              </p>
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Update
-              </button>
-            </div>
-          </div>
-        </Dialog.Panel>
-      </div>
-    </Dialog>
-  )
-}
+import { CreateKeyModal } from '../components/modals/CreateKeyModal'
+import { EditKeyModal } from '../components/modals/EditKeyModal'
+import { Toast } from '../components/Toast'
+import { useApiKeys } from '../hooks/useApiKeys'
+import { ApiKey } from '../types/api'
 
 export default function DashboardPage() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
-
+  const { apiKeys, createApiKey, updateApiKey, deleteApiKey } = useApiKeys()
   const [isCreating, setIsCreating] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
-  const [editingKey, setEditingKey] = useState<string | null>(null)
   const [newKeyLimit, setNewKeyLimit] = useState<number>(1000)
   const [isEditing, setIsEditing] = useState(false)
   const [editingKeyData, setEditingKeyData] = useState<ApiKey | null>(null)
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
-  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
-
-  useEffect(() => {
-    fetchApiKeys()
-  }, [])
-
-  const fetchApiKeys = async () => {
-    const { data, error } = await supabase
-      .from('api_keys')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching API keys:', error)
-      return
-    }
-
-    setApiKeys(data)
-  }
-
-  const createApiKey = async () => {
-    if (!newKeyName) return
-    
-    const newKey = {
-      name: newKeyName,
-      value: `tvly-${Math.random().toString(36).slice(2)}`,
-      usage: 0,
-      monthly_limit: newKeyLimit
-    }
-    
-    const { data, error } = await supabase
-      .from('api_keys')
-      .insert([newKey])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating API key:', error)
-      return
-    }
-
-    setApiKeys([data, ...apiKeys])
-    setNewKeyName('')
-    setNewKeyLimit(1000)
-    setIsCreating(false)
-    displayToast('API Key created successfully', 'success')
-  }
-
-  const updateApiKey = async (id: string, newName: string, newLimit: number) => {
-    const { error } = await supabase
-      .from('api_keys')
-      .update({ 
-        name: newName, 
-        monthly_limit: newLimit 
-      })
-      .eq('id', id)
-
-    if (error) {
-      console.error('Error updating API key:', error)
-      return
-    }
-
-    setApiKeys(apiKeys.map(key => 
-      key.id === id ? { ...key, name: newName, monthly_limit: newLimit } : key
-    ))
-    setEditingKeyData(null)
-    displayToast('API Key updated successfully', 'success')
-  }
-
-  const handleEditClick = (key: ApiKey) => {
-    setEditingKeyData(key)
-    setIsEditing(true)
-  }
-
-  const deleteApiKey = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this API key?')) return
-
-    const { error } = await supabase
-      .from('api_keys')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      console.error('Error deleting API key:', error)
-      return
-    }
-
-    setApiKeys(apiKeys.filter(key => key.id !== id))
-    displayToast('API Key deleted successfully', 'error')
-  }
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
 
   const copyToClipboard = async (text: string, keyId: string) => {
     try {
       await navigator.clipboard.writeText(text)
+      setCopiedKeyId(keyId)
       displayToast('Copied API Key to clipboard', 'success')
+      setTimeout(() => setCopiedKeyId(null), 2000)
     } catch (err) {
       console.error('Failed to copy text: ', err)
     }
@@ -314,6 +44,42 @@ export default function DashboardPage() {
     setToastType(type)
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
+  }
+
+  const handleEditClick = (key: ApiKey) => {
+    setEditingKeyData(key)
+    setIsEditing(true)
+  }
+
+  const handleCreate = async () => {
+    try {
+      const result = await createApiKey(newKeyName, newKeyLimit)
+      if (result) {
+        displayToast('API Key created successfully', 'success')
+        setIsCreating(false)
+      } else {
+        displayToast('Failed to create API Key', 'error')
+      }
+    } catch (error) {
+      console.error('Error creating API key:', error)
+      displayToast('Failed to create API Key', 'error')
+    }
+  }
+
+  const handleEdit = async (id: string, name: string, monthlyLimit: number) => {
+    try {
+      const success = await updateApiKey(id, name, monthlyLimit)
+      if (success) {
+        displayToast('API Key updated successfully', 'success')
+        setIsEditing(false)
+        setEditingKeyData(null)
+      } else {
+        displayToast('Failed to update API Key', 'error')
+      }
+    } catch (error) {
+      console.error('Error updating API key:', error)
+      displayToast('Failed to update API Key', 'error')
+    }
   }
 
   return (
@@ -400,17 +166,7 @@ export default function DashboardPage() {
               {apiKeys.map((key) => (
                 <tr key={key.id} className="border-b border-gray-100">
                   <td className="py-4 px-4 text-gray-900">
-                    {editingKey === key.id ? (
-                      <input
-                        type="text"
-                        defaultValue={key.name}
-                        onBlur={(e) => updateApiKey(key.id, e.target.value, key.monthly_limit || 1000)}
-                        className="border rounded-lg px-3 py-1.5"
-                        autoFocus
-                      />
-                    ) : (
-                      key.name
-                    )}
+                    {key.name}
                   </td>
                   <td className="py-4 px-4 text-gray-900">{key.usage}</td>
                   <td className="py-4 px-4">
@@ -446,7 +202,14 @@ export default function DashboardPage() {
                         <PencilIcon className="w-5 h-5" />
                       </button>
                       <button 
-                        onClick={() => deleteApiKey(key.id)}
+                        onClick={async () => {
+                          try {
+                            await deleteApiKey(key.id)
+                            displayToast('API Key deleted successfully', 'error')
+                          } catch (error) {
+                            displayToast('Failed to delete API Key', 'error')
+                          }
+                        }}
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <TrashIcon className="w-5 h-5" />
@@ -476,35 +239,16 @@ export default function DashboardPage() {
         setNewKeyName={setNewKeyName}
         newKeyLimit={newKeyLimit}
         setNewKeyLimit={setNewKeyLimit}
-        createApiKey={createApiKey}
+        createApiKey={handleCreate}
       />
       <EditKeyModal
         isEditing={isEditing}
         setIsEditing={setIsEditing}
         editingKeyData={editingKeyData}
-        updateApiKey={updateApiKey}
+        updateApiKey={handleEdit}
       />
       {showToast && (
-        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded shadow-lg animate-fade-in ${
-          toastType === 'success' ? 'bg-emerald-500' : 'bg-red-500'
-        } text-white`}>
-          {toastType === 'success' ? (
-            <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M5 13l4 4L19 7"></path>
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          )}
-          <span>{toastMessage}</span>
-          <button 
-            onClick={() => setShowToast(false)}
-            className="ml-2 text-white/80 hover:text-white"
-          >
-            ×
-          </button>
-        </div>
+        <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />
       )}
     </div>
   )
