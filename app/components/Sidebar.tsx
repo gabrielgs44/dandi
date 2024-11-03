@@ -68,7 +68,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
             <span>Research Reports</span>
           </Link>
 
-          <Link href="/api-playground" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md">
+          <Link href="/playground" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md">
             <CodeBracketIcon className="h-5 w-5 mr-3" />
             <span>API Playground</span>
           </Link>
